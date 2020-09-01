@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"strings"
 )
+
+const fallbackport string = "8080"
 
 // main function - entry point
 func main() {
@@ -31,6 +35,20 @@ func main() {
 	}
 }
 
+// Returns TCP port
+func getPort() string {
+	value := getenv("PORT", fallbackport)
+	return fmt.Sprintf(":%s", value)
+}
+
+// Reads env var and returns fallback value if it is not set
+func getenv(key string, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
 // connection handler
 func handle(conn net.Conn) {
 	defer conn.Close()
@@ -53,4 +71,44 @@ func request(conn net.Conn) {
 		}
 		i++
 	}
+}
+
+// multiplexer - router
+func mux(conn net.Conn, ln string) {
+	// request line
+	m := strings.Fields(ln)[0] // method
+	u := strings.Fields(ln)[1] // uri
+	fmt.Println("***METHOD", m)
+	fmt.Println("***URI", u)
+
+	// multiplexer
+	if m == "GET" && u == "/" {
+		index(conn)
+	}
+
+	/*
+		if m == "GET" && u == "/about" {
+			about(conn)
+		}
+		if m == "GET" && u == "/contact" {
+			contact(conn)
+		}
+		if m == "GET" && u == "/apply" {
+			apply(conn)
+		}
+		if m == "POST" && u == "/apply" {
+			applyProcess(conn)
+		}
+	*/
+}
+
+// HANDLER - GET /
+func index(conn net.Conn) {
+	body := `{ "ok": true }`
+
+	fmt.Fprint(conn, "HTTP/1.1 200 OK\r\n")
+	fmt.Fprintf(conn, "Content-Length: %d\r\n", len(body))
+	fmt.Fprint(conn, "Content-Type: application/json\r\n")
+	fmt.Fprint(conn, "\r\n")
+	fmt.Fprint(conn, body)
 }
